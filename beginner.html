@@ -172,7 +172,7 @@ flowchart LR
   A["🏢 Alone<br/>(안에서 알아서 일함)"]:::a
   R["📋 결과<br/>(채팅으로 답장)"]:::r
   U --> A --> R
-  classDef u fill:#ffd0d0,stroke:#a85; stroke-width:2px;
+  classDef u fill:#ffd0d0,stroke:#a85,stroke-width:2px;
   classDef a fill:#d4b8ff,stroke:#6c4ab6,stroke-width:2px;
   classDef r fill:#bfe6c5,stroke:#3a7d3a,stroke-width:2px;
   </div>
@@ -330,7 +330,7 @@ flowchart LR
   PL["👔 Planner<br/>(계획)"]:::pl
   W["🛠️ Worker<br/>(실행)"]:::w
   E["👨‍🔬 Evaluator<br/>(검수)"]:::e
-  PL -.x|"본인 의도<br/>못 봄"| E
+  PL -.->|"본인 의도<br/>못 봄"| E
   W --> E
   C["📇 원본 카드"]:::c
   C --> E
