@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Alone 백엔드 — 사용자 흐름 (Phase 2 M7.5)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<style>
+  :root {
+    --bg: #f7f7fb;
+    --fg: #222;
+    --card: #fff;
+    --muted: #666;
+    --accent: #6c4ab6;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    background: linear-gradient(135deg, #6c4ab6 0%, #4a7ec7 100%);
+    color: white;
+    padding: 28px 36px;
+  }
+  header h1 { margin: 0 0 6px 0; font-size: 1.6em; }
+  header p { margin: 0; opacity: 0.92; font-size: 0.95em; }
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 36px 80px 36px;
+  }
+  section {
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    padding: 24px 28px;
+    margin-bottom: 22px;
+  }
+  section h2 {
+    margin: 0 0 14px 0;
+    color: var(--accent);
+    font-size: 1.25em;
+    border-bottom: 2px solid #ece7f5;
+    padding-bottom: 8px;
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px 18px;
+    font-size: 0.9em;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .legend span::before {
+    content: ""; display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .legend .user::before { background: #ffd0d0; }
+  .legend .web::before  { background: #ffd580; }
+  .legend .agi::before  { background: #d4b8ff; }
+  .legend .coord::before{ background: #b8e8b8; }
+  .legend .domain::before{ background: #99d6f5; }
+  .legend .storage::before{ background: #ffe89d; }
+  .legend .external::before{ background: #cfcfcf; }
+  .legend .infra::before { background: #ffb3c0; }
+  .mermaid {
+    text-align: center;
+    overflow-x: auto;
+  }
+  /* mermaid 글자 크기 키우기 */
+  .mermaid svg { max-width: 100%; height: auto; min-width: 1000px; }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85em;
+    margin-top: 20px;
+    padding: 16px;
+  }
+  code { background: #f0eef7; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Alone 백엔드 — 사용자 흐름 워크플로우</h1>
+  <p>Phase 2 M7.5 (2026-05-30) · 4 도메인 분리 완성: AGI · Planner · Worker · Evaluator (+ PM Coordinator)</p>
+</header>
+
+<main>
+
+<section>
+  <h2>① 사용자 → AGI → 작업 → 응답 (전체 루프)</h2>
+  <div class="legend">
+    <span class="user">사용자</span>
+    <span class="web">웹 / 통신</span>
+    <span class="agi">AGI</span>
+    <span class="coord">Coordinator / 게이트</span>
+    <span class="domain">4 도메인</span>
+    <span class="storage">저장소</span>
+    <span class="external">외부 도구</span>
+    <span class="infra">산출물 / 인프라</span>
+  </div>
+  <div class="mermaid">
+flowchart TD
+
+  %% === 사용자 ===
+  USER["🧑 우희 사마 (CEO)<br/><i>브라우저</i><br/><b>https://woohee.store</b>"]:::user
+
+  %% === 웹 통신 레이어 ===
+  WEB["Chainlit Web UI<br/><code>apps/chat/app.py</code><br/>SSL 443"]:::web
+  EMIT["emit.py<br/><b>AGI sole CEO emitter</b><br/>actor='agi' 게이트"]:::coord
+  INBOX_W["inbox_watcher<br/><i>3초 폴링</i>"]:::web
+
+  %% === AGI 도메인 ===
+  AGI["domains/agi/<br/><b>AGI codex 호출</b><br/>+ parent 이슈 생성"]:::agi
+
+  %% === Coordinator ===
+  PMSESS["pm_session.py<br/><b>3단 Orchestrator</b><br/>split → workers → review"]:::coord
+  PMRUN["apps/pm_runner/runner.py<br/><b>alone-pm PM2</b><br/>60초 polling"]:::infra
+
+  %% === 3 도메인 ===
+  PLAN["domains/planner/<br/><b>split.py</b><br/>+ SPLIT_RULES doctrine"]:::domain
+  WORK["domains/worker/<br/><b>run.py</b><br/>+ WORKER_TOOLS doctrine"]:::domain
+  EVAL["domains/evaluator/<br/><b>evaluate.py</b><br/>+ EVALUATOR_CRITERIA doctrine<br/><i>(독립 평가자)</i>"]:::domain
+
+  %% === Enforcement ===
+  REVIEW["domains/pm/cli/review.py<br/><b>Enforcement Coordinator</b><br/>evaluator + mechanical 합성<br/>(PM 자가검수 X)"]:::coord
+
+  %% === 외부 도구 + 산출물 ===
+  CODEX["shared/codex.py<br/>codex CLI 래퍼<br/><i>--output-schema 강제</i>"]:::external
+  WS["apps/chat/workspace/<br/>워커 산출물 (bypass 모드)<br/>+ AGENTS.md"]:::infra
+
+  %% === 저장소 ===
+  ISSUES[("issues<br/><i>parent_id 계층</i>")]:::storage
+  EVTLOG[("event_log<br/><i>assignee CHECK</i>")]:::storage
+  INBOX_DB[("agi_inbox<br/><i>PM → AGI 신호</i>")]:::storage
+
+  %% === Escalation ===
+  ESC["shared/escalation.py<br/>actor != 'agi'<br/>→ <b>EscalationViolation</b>"]:::coord
+
+  %% ===== 흐름 =====
+  USER -->|"① 메시지 입력"| WEB
+  WEB -->|"② SSE 스트림"| AGI
+  AGI -->|"③ parent INSERT"| ISSUES
+  AGI -->|"event_log"| EVTLOG
+
+  ISSUES -.->|"④ 60초 polling<br/>assigned='pm'<br/>status='pending'"| PMRUN
+  PMRUN -->|"⑤ run_session(parent_id)"| PMSESS
+
+  PMSESS -->|"⑥ subprocess<br/>-m planner.cli.split"| PLAN
+  PLAN -->|"sub-issues INSERT"| ISSUES
+  PLAN -->|"codex<br/>--output-schema"| CODEX
+
+  PMSESS -->|"⑦ subprocess<br/>-m worker.cli.run<br/>(sub 마다 1회)"| WORK
+  WORK -->|"bypass codex"| CODEX
+  WORK -->|"⑧ 파일 write"| WS
+  WORK -->|"worker_reported<br/>(payload_json)"| EVTLOG
+
+  PMSESS -->|"⑨ subprocess<br/>-m pm.cli.review"| REVIEW
+  REVIEW -->|"⑩ _run_evaluator()<br/>codex 호출"| EVAL
+  EVAL -->|"verdict + failed_criteria"| REVIEW
+  REVIEW -->|"mechanical inspection<br/>(8종 mismatch)"| WS
+
+  REVIEW -->|"⑪ final verdict<br/>verification_run"| EVTLOG
+  REVIEW -->|"⑫ INSERT<br/>(ceo_message + verdict)"| INBOX_DB
+
+  INBOX_DB -.->|"⑬ 3초 polling<br/>seen_ids 추적"| INBOX_W
+  INBOX_W -->|"⑭ AGI 채팅에<br/>자동 주입"| AGI
+  AGI -->|"⑮ 응답 메시지"| EMIT
+  EMIT -->|"assert_agi_actor"| ESC
+  EMIT -->|"⑯ Chainlit 송신"| WEB
+  WEB -->|"⑰ SSE 응답"| USER
+
+  %% 색상 정의
+  classDef user fill:#ffd0d0,stroke:#aa5b5b,stroke-width:2px,color:#000;
+  classDef web fill:#ffd580,stroke:#b88033,stroke-width:2px,color:#000;
+  classDef agi fill:#d4b8ff,stroke:#6c4ab6,stroke-width:2px,color:#000;
+  classDef coord fill:#b8e8b8,stroke:#3a7d3a,stroke-width:2px,color:#000;
+  classDef domain fill:#99d6f5,stroke:#2a6fa3,stroke-width:2.5px,color:#000;
+  classDef storage fill:#ffe89d,stroke:#a88800,stroke-width:2px,color:#000;
+  classDef external fill:#cfcfcf,stroke:#666,stroke-width:1.5px,color:#000;
+  classDef infra fill:#ffb3c0,stroke:#b04050,stroke-width:1.5px,color:#000;
+  </div>
+</section>
+
+<section>
+  <h2>② 단계별 설명 (사용자 관점)</h2>
+  <ol>
+    <li><b>① 메시지 입력</b> — 우희 사마가 woohee.store 채팅창에 자연어 지시</li>
+    <li><b>② SSE 스트림</b> — Chainlit 이 메시지를 AGI 도메인으로 전달</li>
+    <li><b>③ parent INSERT</b> — AGI codex 가 parent 이슈를 SQLite 에 저장 (goal + complete_condition)</li>
+    <li><b>④ 60초 polling</b> — alone-pm PM2 데몬이 새 parent 이슈 발견</li>
+    <li><b>⑤ run_session</b> — 3단 orchestrator 진입 (split → workers → review)</li>
+    <li><b>⑥ Planner (split)</b> — codex --output-schema 로 sub-issue 계약들 생성</li>
+    <li><b>⑦ Worker (run)</b> — sub-issue 1건씩 bypass codex 가 실제 작업</li>
+    <li><b>⑧ 파일 write</b> — workspace 안에 실제 산출물 생성</li>
+    <li><b>⑨ Review 진입</b> — 모든 sub 종료 → enforcement coordinator 호출</li>
+    <li><b>⑩ Evaluator 호출</b> — 독립 평가자 codex (NeurIPS 2024 self-preference 해소)</li>
+    <li><b>⑪ Final verdict</b> — evaluator + mechanical (8종 mismatch) 합성 → accept/partial/reject</li>
+    <li><b>⑫ agi_inbox INSERT</b> — escalation invariant: PM 채널 직통 X, agi_inbox 만</li>
+    <li><b>⑬ inbox_watcher</b> — 3초 폴링이 새 inbox 항목 감지</li>
+    <li><b>⑭ AGI 주입</b> — PM 결과를 AGI 다음 응답 컨텍스트에 자동 prepend</li>
+    <li><b>⑮ 응답 생성</b> — AGI 가 결과를 종합해 우희 사마용 메시지 작성</li>
+    <li><b>⑯ emit 게이트</b> — actor='agi' 검증 (EscalationViolation 방지)</li>
+    <li><b>⑰ SSE 응답</b> — 우희 사마 브라우저로 스트림</li>
+  </ol>
+</section>
+
+<section>
+  <h2>③ Phase 2 M7.5 핵심 변경</h2>
+  <ul>
+    <li><b>4 도메인 분리</b>: 옛 <code>domains/pm/</code> 하나에 섞여있던 기획/작업/검수를 <code>planner / worker / evaluator</code> 3 개로 분리</li>
+    <li><b>PM 자가검수 codex 호출 완전 폐기</b>: NeurIPS 2024 self-preference bias antipattern 해소</li>
+    <li><b>evaluator 독립 평가자</b>: PM 의 rationale / split 의도 안 봄 → 자기편향 차단</li>
+    <li><b>review.py 슬림화</b>: 평가자 아님 → enforcement coordinator (evaluator + mechanical 합성)</li>
+    <li><b>codex 호출 -1/이슈</b>: PM review 1회 절감</li>
+    <li><b>테스트 109/109 통과</b></li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  Alone Phase 2 M7.5 · 10 커밋 · 2026-05-30<br/>
+  Mermaid v10 · GitHub Pages
+</footer>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "default",
+    fontFamily: "Malgun Gothic, Apple SD Gothic Neo, sans-serif",
+    flowchart: {
+      curve: "basis",
+      nodeSpacing: 50,
+      rankSpacing: 70,
+      htmlLabels: true,
+      useMaxWidth: false,
+    },
+    securityLevel: "loose",
+  });
+</script>
+</body>
+</html>
