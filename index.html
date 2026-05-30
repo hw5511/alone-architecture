@@ -82,13 +82,42 @@
     padding: 16px;
   }
   code { background: #f0eef7; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+  nav.tabs {
+    background: var(--card);
+    border-bottom: 1px solid #ece7f5;
+    padding: 0 36px;
+    display: flex;
+    gap: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  nav.tabs a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 16px 22px;
+    font-weight: bold;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  nav.tabs a:hover { color: var(--accent); }
+  nav.tabs a.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>Alone 백엔드 — 사용자 흐름 워크플로우</h1>
-  <p>Phase 2 M7.5 (2026-05-30) · 4 도메인 분리 완성: AGI · Planner · Worker · Evaluator (+ PM Coordinator)</p>
+  <p>Phase 2 M7.5 + M1/M4/M5/M6 (2026-05-30) · 4 도메인 분리 완성: AGI · Planner · Worker · Evaluator (+ PM Coordinator)</p>
 </header>
+
+<nav class="tabs">
+  <a href="index.html" class="active">엔지니어용</a>
+  <a href="beginner.html">처음 보는 사람용</a>
+</nav>
 
 <main>
 
